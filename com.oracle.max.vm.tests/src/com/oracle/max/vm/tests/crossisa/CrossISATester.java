@@ -25,28 +25,52 @@ import java.io.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
 
+/////////////////////////////////////
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+/////////////////////////////////////
+
 import static com.oracle.max.vm.tests.crossisa.CrossISATester.BitsFlag.All64Bits;
 import static com.oracle.max.vm.tests.crossisa.CrossISATester.BitsFlag.Lower32Bits;
 
 public abstract class CrossISATester {
 
     private static final   String ENABLE_QEMU    = "test.crossisa.qemu";
-    protected static final File   qemuOutput     = new File("qemu_output");
-    protected static final File   qemuErrors     = new File("qemu_errors");
-    private static final   File   bindOutput     = new File("bind_output");
-    protected static final File   gdbOutput      = new File("gdb_output");
-    protected static final String gdbInput       = "gdb_input";
-    protected static final File   gdbErrors      = new File("gdb_errors");
-    protected static final File   gccOutput      = new File("gcc_output");
-    protected static final File   gccErrors      = new File("gcc_errors");
-    protected static final File   asOutput       = new File("as_output");
-    protected static final File   asErrors       = new File("as_errors");
-    protected static final File   linkOutput     = new File("link_output");
-    protected static final File   linkErrors     = new File("link_errors");
+
+    protected static  int    port_counter   =40004;      
+    protected static  int    name_counter   =0;    
+
+    protected static  File   og_gdb = new File("gdb_input");
+    protected static  File   og_elf = new File("test.elf");
+    protected static  String rplc_path,elf_path;
+
+    protected   File   new_elf;
+    protected   File   new_gdb;
+
+
+    protected static  File   qemuOutput;
+    protected static  File   qemuErrors;
+    private static    File   bindOutput;
+    protected static  File   gdbOutput ;
+    protected static  String gdbInput  ;
+    protected static  File   gdbErrors ;
+    protected static  File   gccOutput ;
+    protected static  File   gccErrors ;
+    protected static  File   asOutput  ;
+    protected static  File   asErrors  ;
+    protected static  File   linkOutput;
+    protected static  File   linkErrors;
 
     public static  boolean ENABLE_SIMULATOR = true;
     private static boolean RESET            = false;
     private static boolean DEBUG            = false;
+
+    protected int my_port,my_name;
 
     private static final int MAX_NUMBER_OF_REGISTERS = 32;
     protected Process gcc;
@@ -75,6 +99,33 @@ public abstract class CrossISATester {
     protected boolean[]  testDoubleRegisters      = new boolean[MAX_NUMBER_OF_REGISTERS];
 
     protected CrossISATester() {
+        sync();
+        
+        qemuOutput     = new File("qemu_output"+my_name);
+        qemuErrors     = new File("qemu_errors"+my_name);
+        bindOutput     = new File("bind_output"+my_name);
+        gdbOutput      = new File("gdb_output"+my_name);
+        gdbInput       = "gdb_input"+my_name;
+
+	new_gdb        = new File(gdbInput);	
+        new_elf        = new File("test"+my_name+".elf");
+        elf_path       ="test" +my_name+ ".elf";
+	
+	cpf(og_elf,new_elf);                                    //copy gdb_input and test.elf to new files
+        cpf(og_gdb,new_gdb);
+
+        rplc(gdbInput,"test.elf",elf_path);                     //replace port and test.elf with the new ones
+        rplc(gdbInput,"1234",""+my_port);
+
+        gdbErrors      = new File("gdb_errors"+my_name);
+        gccOutput      = new File("gcc_output"+my_name);
+        gccErrors      = new File("gcc_errors"+my_name);
+        asOutput       = new File("as_output"+my_name);
+        asErrors       = new File("as_errors"+my_name);
+        linkOutput     = new File("link_output"+my_name);
+        linkErrors     = new File("link_errors"+my_name);
+        //////////////////////////////////////////
+        System.out.println("CrossISATester: Hi im CrossISATester"+my_name+" with port: "+my_port);
         gccProcessBuilder = getCompilerProcessBuilder();
         gccProcessBuilder.redirectOutput(gccOutput);
         gccProcessBuilder.redirectError(gccErrors);
@@ -87,8 +138,10 @@ public abstract class CrossISATester {
         gdbProcessBuilder = getGDBProcessBuilder();
         gdbProcessBuilder.redirectOutput(gdbOutput);
         gdbProcessBuilder.redirectError(gdbErrors);
-        removeFiles = new ProcessBuilder("/bin/rm", "-rfR", "test.elf");
+        removeFiles = new ProcessBuilder("/bin/rm", "-rfR", elf_path);
     }
+
+
 
     public static void setBitMask(BitsFlag[] bitmasks, int i, BitsFlag mask) {
         bitmasks[i] = mask;
@@ -366,6 +419,7 @@ public abstract class CrossISATester {
     }
 
     public void cleanProcesses() {
+        System.out.println("CrossISATester: cleanProcesses");
         terminateProcess(gcc);
         terminateProcess(assembler);
         terminateProcess(linker);
@@ -380,6 +434,7 @@ public abstract class CrossISATester {
     }
 
     public void cleanFiles() {
+        System.out.println("CrossISATester: cleanFiles");
         deleteFile(qemuOutput);
         deleteFile(qemuErrors);
         deleteFile(bindOutput);
@@ -391,9 +446,13 @@ public abstract class CrossISATester {
         deleteFile(asErrors);
         deleteFile(linkOutput);
         deleteFile(linkErrors);
+        //deleteFile(new_gdb);
+        deleteFile(new_elf);
     }
 
     public void reset() {
+        System.out.println("CrossISATester: reset");
+        System.out.println("#########################################");
         if (RESET) {
             cleanFiles();
         }
@@ -401,20 +460,28 @@ public abstract class CrossISATester {
     }
 
     protected void bindToQemu() throws InterruptedException, IOException {
+       System.out.println("-----------------------------------------"); 
+       System.out.println("CrossISATester: bindToQemu");
         do {
-            ProcessBuilder bindTest = new ProcessBuilder("lsof", "-i", "TCP:1234");
+	    System.out.println("bindToQemu at port: "+my_port);
+            ProcessBuilder bindTest = new ProcessBuilder("lsof", "-i", "TCP:"+my_port);
+
             bindTest.redirectOutput(bindOutput);
+            System.out.println("bindToQemu bindOutput: "+bindOutput);
             bindTest.start().waitFor();
+            System.out.println("CRISA: after waitFor");
             FileInputStream inputStream = new FileInputStream(bindOutput);
             if (inputStream.available() != 0) {
                 log("CrossISATester: qemu ready");
                 inputStream.close();
                 break;
             } else {
+                System.out.println("CRSISA: Qemu not ready");
                 log("CrossISATester: qemu not ready");
                 Thread.sleep(500);
             }
         } while (true);
+	System.out.println("BINDED");
     }
 
     /**
@@ -660,8 +727,10 @@ public abstract class CrossISATester {
     }
 
     protected void initializeQemu() {
+        System.out.println("CrossISATester: initializeQemu");
         final Integer enableQemuProperty = Integer.getInteger(ENABLE_QEMU);
         if (enableQemuProperty != null && enableQemuProperty <= 0) {
+            System.out.println("false");
             ENABLE_SIMULATOR = false;
         }
     }
@@ -683,6 +752,7 @@ public abstract class CrossISATester {
 
     public void runSimulation() throws Exception {
         try {
+            System.out.println("CrossISATester: runSimulation");
             qemu = qemuProcessBuilder.start();
             while (!qemuOutput.exists()) {
                 Thread.sleep(500);
@@ -697,12 +767,14 @@ public abstract class CrossISATester {
     }
 
     public void link() {
+        System.out.println("CrossISATester: link");
         linker = runBlocking(linkerProcessBuilder);
     }
 
     protected abstract ProcessBuilder getLinkerProcessBuilder();
 
     public void compile() {
+        System.out.println("CrossISATester: compile");
         runBlocking(removeFiles);
         gcc = runBlocking(gccProcessBuilder);
     }
@@ -719,8 +791,48 @@ public abstract class CrossISATester {
     }
 
     public void run() throws Exception {
+        System.out.println("CrossISATester: Run");
         compile();
         link();
         runSimulation();
     }
+
+    protected synchronized void sync(){
+	name_counter++;
+        port_counter++;
+
+	my_name=name_counter;
+	my_port=port_counter;
+    }
+
+    protected synchronized void sync_files(){
+
+
+    }
+
+    protected void cpf(File file1,File file2){
+        FileChannel src,dest ;
+        try {
+            file2.createNewFile();
+            src = new FileInputStream(file1).getChannel();
+            dest = new FileOutputStream(file2).getChannel();
+            dest.transferFrom(src, 0, src.size());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected void rplc(String path1,String torep,String rep){
+        try {
+            Path path = Paths.get(path1);
+            Stream<String> lines = Files.lines(path);
+            List<String> replaced = lines.map(line -> line.replaceAll(torep, rep)).collect(Collectors.toList());
+            Files.write(path, replaced);
+            lines.close();
+            //System.out.println("CrossISA: rplc done");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
+    

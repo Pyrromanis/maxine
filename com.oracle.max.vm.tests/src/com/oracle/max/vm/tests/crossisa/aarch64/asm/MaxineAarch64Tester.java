@@ -24,6 +24,7 @@ import com.oracle.max.vm.tests.crossisa.CrossISATester;
 public class MaxineAarch64Tester extends CrossISATester {
 
     public static final int NUM_REGS = 32;
+    private static String port;
 
     /*
      * arm-unknown-eabi-gcc -c -march=armv8-a -g test_aarch64.c -o test_aarch64.o
@@ -86,7 +87,7 @@ public class MaxineAarch64Tester extends CrossISATester {
      * @param objects -- names of the object files
      */
     public void link(String linkScript, String... objects) {
-        String [] args = {"aarch64-linux-gnu-ld", "-T", linkScript, "-o", "test.elf"};
+        String [] args = {"aarch64-linux-gnu-ld", "-T", linkScript, "-o", elf_path};
         String [] fullargs = new String[args.length + objects.length];
         System.arraycopy(args, 0, fullargs, 0, args.length);
         System.arraycopy(objects, 0, fullargs, args.length, objects.length);
@@ -103,7 +104,7 @@ public class MaxineAarch64Tester extends CrossISATester {
             return gccProcessBuilder;
         }
         return new ProcessBuilder("aarch64-linux-gnu-gcc", "-march=armv8-a+simd", "-nostdlib", "-nostartfiles", "-g",
-                                  "-Ttest_aarch64.ld", "startup_aarch64.s", "test_aarch64.c", "-o", "test.elf");
+                                  "-Ttest_aarch64.ld", "startup_aarch64.s", "test_aarch64.c", "-o", elf_path);
     }
 
     @Override
@@ -118,8 +119,9 @@ public class MaxineAarch64Tester extends CrossISATester {
         if (qemuProcessBuilder != null) {
             return qemuProcessBuilder;
         }
+	port="tcp::"+my_port;
         return new ProcessBuilder("qemu-system-aarch64", "-cpu", "cortex-a57", "-M", "virt", "-m", "128M", "-nographic",
-                "-s", "-S", "-kernel", "test.elf");
+                "-gdb",port, "-S", "-kernel", elf_path);
     }
 
     public long[] runRegisteredSimulation() throws Exception {

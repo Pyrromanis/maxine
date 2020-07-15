@@ -1,0 +1,13 @@
+touch qemu_output{1..100}
+touch qemuErrors{1..100}
+touch bindOutput{1..100}
+touch gdbOutput{1..100}
+touch new_gdb{1..100}
+touch new_elf{1..100}
+touch gdbErrors{1..100}
+touch gccOutput{1..100}
+touch gccErrors{1..100}
+touch asOutput{1..100}
+touch asErrors{1..100}
+touch linkOutput{1..100}
+touch linkErrors{1..100}

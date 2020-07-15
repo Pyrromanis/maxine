@@ -34,25 +34,31 @@ public class RISCV64AssemblerTest {
 
     private RISCV64MacroAssembler asm;
     private MaxineRISCV64Tester tester = new MaxineRISCV64Tester();
+    //private static int counter=0;
 
     public RISCV64AssemblerTest() {
         CiTarget risc64 = new CiTarget(new RISCV64(), true, 8, 0, 4096, 0, false, false, false, true);
         asm = new RISCV64MacroAssembler(risc64);
+        //System.out.println("RISCV64ASMTester: Hi my name is Tester");
+        //tester=new MaxineRISCV64Tester();
+        //counter++;
     }
 
     @Before
     public void initialiseTest() {
+        System.out.println("RISCV64ASMTester: @Before");
         tester.resetTestValues();
     }
 
     @After
     public void generateAndTest() throws Exception {
-        RISCV64CodeWriter code = new RISCV64CodeWriter(asm.codeBuffer);
+	RISCV64CodeWriter code = new RISCV64CodeWriter(asm.codeBuffer);
         code.createCodeFile();
         if (!CrossISATester.ENABLE_SIMULATOR) {
             System.out.println("Code Generation is disabled!");
             System.exit(1);
         }
+        System.out.println("RISCV64ASMTester: @After");
         tester.compile();
         tester.runSimulation();
         tester.cleanProcesses();

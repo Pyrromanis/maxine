@@ -36,6 +36,7 @@ public class MaxineRISCV64Tester extends CrossISATester {
      */
     private MaxineRISCV64Tester(String[] args) {
         super();
+        System.out.println("MaxineRISCVTester: constructor 1");
         initializeQemu();
         expectedLongRegisters = new long[Integer.parseInt(args[0])];
         testIntRegisters = new boolean[Integer.parseInt(args[0])];
@@ -47,7 +48,8 @@ public class MaxineRISCV64Tester extends CrossISATester {
     }
 
     public MaxineRISCV64Tester(long[] expected, boolean[] test, BitsFlag[] range) {
-        super();
+        super();       
+        System.out.println("MaxineRISCVTester: constructor 2");
         initializeQemu();
         bitMasks = range;
         expectedLongRegisters = expected;
@@ -56,6 +58,8 @@ public class MaxineRISCV64Tester extends CrossISATester {
 
     public MaxineRISCV64Tester() {
         super();
+        //System.out.println("MaxineRISCVTester: null constructor");
+        System.out.println("MaxineRISCVTester: Hi im MaxineRISCV64Tester"+name_counter+" with port: "+port_counter);
         initializeQemu();
     }
 
@@ -66,7 +70,7 @@ public class MaxineRISCV64Tester extends CrossISATester {
         }
         return new ProcessBuilder("riscv64-linux-gnu-gcc", "-g", "-march=rv64g", "-mabi=lp64d", "-static",
                                   "-mcmodel=medany", "-fvisibility=hidden", "-nostdlib", "-nostartfiles",
-                                  "-Ttest_riscv64.ld", "startup_riscv64.s", "test_riscv64.c", "-o", "test.elf");
+                                  "-Ttest_riscv64.ld", "startup_riscv64.s", "test_riscv64.c", "-o", elf_path);
     }
 
     @Override
@@ -82,7 +86,7 @@ public class MaxineRISCV64Tester extends CrossISATester {
         if (gdbProcessBuilder != null) {
             return gdbProcessBuilder;
         }
-        return new ProcessBuilder("riscv64-elf-gdb", "-q", "-x", gdbInput);
+        return new ProcessBuilder("/opt/riscv/bin/riscv32-elf,riscv64-elf-gdb", "-q", "-x", gdbInput);
     }
 
     @Override
@@ -90,7 +94,7 @@ public class MaxineRISCV64Tester extends CrossISATester {
         if (qemuProcessBuilder != null) {
             return qemuProcessBuilder;
         }
-        return new ProcessBuilder("qemu-system-riscv64", "-M", "virt", "-m", "128M", "-nographic", "-s", "-S", "-kernel", "test.elf");
+        return new ProcessBuilder("/opt/riscv/bin/qemu-system-riscv64", "-M", "virt", "-m", "128M", "-nographic", "-s", "-S", "-kernel", elf_path);
     }
 
     public long[] runRegisteredSimulation() throws Exception {
@@ -209,8 +213,9 @@ public class MaxineRISCV64Tester extends CrossISATester {
         return 0.0;
     }
 
-    public void runSimulation() throws Exception {
+    public void runSimulation() throws Exception {        
         super.runSimulation();
+        System.out.println("MaxineRISCVTester: runSimulation");
         parseLongRegisters("ra ", "pc");
         parseFloatRegisters("ft0 ", "ustatus");
         parseDoubleRegisters("ft0 ", "ustatus");
@@ -218,6 +223,7 @@ public class MaxineRISCV64Tester extends CrossISATester {
 
     public static void main(String[] args) throws Exception {
         MaxineRISCV64Tester tester = new MaxineRISCV64Tester(args);
+        System.out.println("MaxineRISCVTester: MAIN");
         tester.run();
     }
 }
