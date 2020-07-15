@@ -29,6 +29,7 @@ import static java.lang.Enum.valueOf;
 
 public class MaxineRISCV64Tester extends CrossISATester {
     public static final int NUM_REGS = 32;
+    private static String port;
 
     /*
      * riscv64-linux-gnu-gcc -g -march=rv64g -mabi=lp64d -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -Ttest_riscv64.ld startup_riscv64.s test_riscv64.c -o test.elf
@@ -68,6 +69,7 @@ public class MaxineRISCV64Tester extends CrossISATester {
         if (gccProcessBuilder != null) {
             return gccProcessBuilder;
         }
+
         return new ProcessBuilder("riscv64-linux-gnu-gcc", "-g", "-march=rv64g", "-mabi=lp64d", "-static",
                                   "-mcmodel=medany", "-fvisibility=hidden", "-nostdlib", "-nostartfiles",
                                   "-Ttest_riscv64.ld", "startup_riscv64.s", "test_riscv64.c", "-o", elf_path);
@@ -94,7 +96,8 @@ public class MaxineRISCV64Tester extends CrossISATester {
         if (qemuProcessBuilder != null) {
             return qemuProcessBuilder;
         }
-        return new ProcessBuilder("/opt/riscv/bin/qemu-system-riscv64", "-M", "virt", "-m", "128M", "-nographic", "-s", "-S", "-kernel", elf_path);
+	port="tcp::"+my_port;
+        return new ProcessBuilder("/opt/riscv/bin/qemu-system-riscv64", "-M", "virt", "-m", "128M", "-nographic", "-gdb", port , "-kernel", elf_path);
     }
 
     public long[] runRegisteredSimulation() throws Exception {

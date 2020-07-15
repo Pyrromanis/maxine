@@ -24,7 +24,7 @@ import com.oracle.max.vm.tests.crossisa.*;
 public class MaxineARMv7Tester extends CrossISATester {
 
     public static final int NUM_REGS = 52;
-    private static String port="tcp::"+1234;
+    private static String port;
 
     /*
      * arm-unknown-eabi-gcc -DSTATIC -mfloat-abi=hard -mfpu=vfpv3-d16 -march=armv7-a -nostdlib -nostartfiles -g -Ttest_armv7.ld startup_armv7.s test_armv7.c -o test.elf
@@ -52,6 +52,7 @@ public class MaxineARMv7Tester extends CrossISATester {
         if (qemuProcessBuilder != null) {
             return qemuProcessBuilder;
         }
+	port="tcp::"+my_port;
         return new ProcessBuilder("qemu-system-arm", "-cpu", "cortex-a15", "-M", "versatilepb", "-m", "128M",
                                   "-nographic", "-gdb", port , "-S", "-kernel", elf_path);
     }
